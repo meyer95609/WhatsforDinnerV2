@@ -7,103 +7,108 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const allergiesList = ['Peanuts', 'Dairy', 'Gluten', 'Shellfish', 'Eggs', 'Soy'];
-const nutritionGoals = ['High Protein', 'Low Carb', 'Balanced', 'Vegan', 'Keto'];
-const cuisines = ['Mexican', 'Italian', 'Mediterranean', 'American', 'Asian', 'Indian'];
-const costOptions = ['Budget ($)', 'Moderate ($$)', 'Premium ($$$)'];
-const timeOptions = ['<15 min', '<30 min', '30–60 min', 'Slow cook'];
-const daysOfWeek = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
+const daysOfWeek = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
+
+const allergiesList = [
+  'Dairy', 'Eggs', 'Gluten', 'Peanuts', 'Shellfish',
+  'Soy', 'Tree Nuts', 'Fish', 'Sesame',
+];
+
+const nutritionGoals = [
+  'High Protein', 'Low Carb', 'Low Fat', 'Balanced',
+  'Heart-Healthy', 'Low Sodium', 'Weight Loss', 'Muscle Gain',
+];
+
+const cuisines = [
+  'Mexican', 'Italian', 'Mediterranean', 'American',
+  'Asian', 'Indian', 'Thai', 'Japanese', 'Chinese', 'Middle Eastern',
+];
+
+const householdSizes = ['1', '2', '3–4', '5+'];
 
 export default function PreferencesScreen() {
+  const [selectedDays, setSelectedDays] = useState([...daysOfWeek]);
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [selectedNutrition, setSelectedNutrition] = useState('');
   const [selectedCuisines, setSelectedCuisines] = useState([]);
-  const [selectedCost, setSelectedCost] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [numPeople, setNumPeople] = useState(2);
-  const [selectedDays, setSelectedDays] = useState([...daysOfWeek]);
+  const [householdSize, setHouseholdSize] = useState('');
 
-  const toggleItem = (list, setList, item) => {
-    setList((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+
+  const toggleSelection = (item, list, setList) => {
+    setList(list.includes(item)
+      ? list.filter(i => i !== item)
+      : [...list, item]
     );
   };
 
-  const renderPills = (options, selected, setSelected, multi = false) =>
-    options.map((item) => {
-      const isSelected = multi
-        ? selected.includes(item)
-        : selected === item;
-      return (
+  const renderOptions = (options, selected, setSelected, multi = true) => (
+    <View style={styles.optionGroup}>
+      {options.map((item) => (
         <TouchableOpacity
           key={item}
-          style={[styles.pill, isSelected && styles.selectedPill]}
-          onPress={() =>
-            multi
-              ? toggleItem(selected, setSelected, item)
-              : setSelected(item)
-          }
+          style={[styles.option, selected.includes(item) && styles.selected]}
+          onPress={() => multi
+            ? toggleSelection(item, selected, setSelected)
+            : setSelected(item === selected ? '' : item)}
         >
-          <Text style={[styles.pillText, isSelected && styles.selectedPillText]}>
-            {item}
-          </Text>
+          <Text style={styles.optionText}>{item}</Text>
         </TouchableOpacity>
-      );
-    });
+      ))}
+    </View>
+  );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.section}>Allergies</Text>
-      <View style={styles.pillRow}>
-        {renderPills(allergiesList, selectedAllergies, setSelectedAllergies, true)}
-      </View>
+    <ScrollView style={styles.container}>
+           <Text style={styles.header}>Meals Per Day (Select Days)</Text>
+      {renderOptions(daysOfWeek, selectedDays, setSelectedDays)}
+     
+      <Text style={styles.header}>Household Size</Text>
+      {renderOptions(householdSizes, [householdSize], setHouseholdSize, false)}
 
-      <Text style={styles.section}>Nutrition Goals (optional)</Text>
-      <View style={styles.pillRow}>
-        {renderPills(nutritionGoals, selectedNutrition, setSelectedNutrition)}
-      </View>
+      <Text style={styles.header}>Allergies</Text>
+      {renderOptions(allergiesList, selectedAllergies, setSelectedAllergies)}
 
-      <Text style={styles.section}>Preferred Cuisines</Text>
-      <View style={styles.pillRow}>
-        {renderPills(cuisines, selectedCuisines, setSelectedCuisines, true)}
-      </View>
+      <Text style={styles.header}>Preferred Cuisines</Text>
+      {renderOptions(cuisines, selectedCuisines, setSelectedCuisines)}
 
-      <Text style={styles.section}>Cost Preference</Text>
-      <View style={styles.pillRow}>
-        {renderPills(costOptions, selectedCost, setSelectedCost)}
-      </View>
+      <Text style={styles.header}>Nutrition Goals (optional)</Text>
+      {renderOptions(nutritionGoals, [selectedNutrition], setSelectedNutrition, false)}
 
-      <Text style={styles.section}>Time to Cook</Text>
-      <View style={styles.pillRow}>
-        {renderPills(timeOptions, selectedTime, setSelectedTime)}
-      </View>
-
-      <Text style={styles.section}>Number of People</Text>
-      <View style={styles.pillRow}>
-        {renderPills(['1', '2', '3', '4', '5+'], numPeople.toString(), (val) => setNumPeople(parseInt(val)))}
-      </View>
-
-      <Text style={styles.section}>Meals Per Day</Text>
-      <View style={styles.pillRow}>
-        {renderPills(daysOfWeek, selectedDays, setSelectedDays, true)}
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  section: { fontSize: 18, fontWeight: 'bold', marginBottom: 6, marginTop: 18 },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: {
-    backgroundColor: '#eee',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
+  container: {
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
   },
-  selectedPill: { backgroundColor: '#000' },
-  pillText: { color: '#333', fontSize: 14 },
-  selectedPillText: { color: '#fff' },
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  optionGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  option: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    margin: 5,
+    backgroundColor: '#f0f0f0',
+  },
+  selected: {
+    backgroundColor: '#add8e6',
+    borderColor: '#0077b6',
+  },
+  optionText: {
+    fontSize: 16,
+  },
 });

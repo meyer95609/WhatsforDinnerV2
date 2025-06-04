@@ -5,14 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './screens/LoginScreen';
 import RecipeScreen from './screens/RecipeScreen';
 import DayScreen from './screens/DayScreen';
-import TabNavigator from './navigation/TabNavigator'; // ✅ This is your bottom tab nav
+import TabNavigator from './navigation/TabNavigator';
 import PreferencesScreen from './screens/PreferencesScreen';
-
-<Stack.Navigator>
-  <Stack.Screen name="Home" component={HomeScreen} />
-  <Stack.Screen name="Preferences" component={PreferencesScreen} />
-</Stack.Navigator>
-
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +18,7 @@ export default function App() {
         <Stack.Screen name="Main" component={TabNavigator} />
         <Stack.Screen name="Recipe" component={RecipeScreen} />
         <Stack.Screen name="Day" component={DayScreen} />
+        <Stack.Screen name="PreferencesScreen" component={PreferencesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

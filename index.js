@@ -1,8 +1,28 @@
-import { registerRootComponent } from 'expo';
+serve(async (req) => {
+  const { preferences } = await req.json()
 
-import App from './App';
+  const prompt = `Create a dinner meal plan for 7 days based on: 
+  - Allergies: ${preferences.allergies.join(', ')}
+  - Nutrition: ${preferences.nutrition}
+  - Cuisines: ${preferences.cuisines.join(', ')}
+  - Household size: ${preferences.householdSize}`
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+
+  const data = await response.json()
+  const message = data.choices?.[0]?.message?.content
+
+  return new Response(JSON.stringify({ plan: message }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})

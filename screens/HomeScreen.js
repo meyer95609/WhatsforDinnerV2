@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,147 +7,338 @@ import {
   Image,
   TouchableOpacity,
   Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
-// Dummy local images
+const SUPABASE_FUNCTION_URL = 'https://occqboivivsxdqgrfkgt.functions.supabase.co/generate-meal-plan';
+
+async function generateMealPlanFromAI(prompt) {
+  try {
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }), // you can rename this based on what your function expects
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate meal plan');
+    }
+
+    const data = await response.json();
+    return data; // Expecting a meal plan array
+  } catch (error) {
+    console.error('Error generating meal plan:', error);
+    return [];
+  }
+}
+
 const localImages = [
   require('../assets/padthai.jpg'),
   require('../assets/fishtaco.jpg'),
   require('../assets/default.jpg'),
 ];
 
-export default function HomeScreen({ navigation }) {
-  const [recipes, setRecipes] = useState([]);
+const mockMealPlan = [
+  {
+    day: 'Monday',
+    title: 'Grilled Chicken Bowl',
+    cookTime: '30 min',
+    ingredients: ['Chicken breast', 'Quinoa', 'Spinach', 'Avocado'],
+    instructions: 'Grill chicken, cook quinoa, and combine with spinach and avocado.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Tuesday',
+    title: 'Spaghetti Bolognese',
+    cookTime: '40 min',
+    ingredients: ['Spaghetti', 'Ground beef', 'Tomato sauce'],
+    instructions: 'Cook pasta, brown beef, add sauce, and simmer.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Wednesday',
+    title: 'Veggie Stir Fry',
+    cookTime: '25 min',
+    ingredients: ['Broccoli', 'Carrots', 'Bell pepper', 'Soy sauce'],
+    instructions: 'Stir fry all veggies, add sauce, and serve with rice.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Thursday',
+    title: 'Salmon Tacos',
+    cookTime: '30 min',
+    ingredients: ['Salmon', 'Tortillas', 'Cabbage slaw', 'Lime'],
+    instructions: 'Cook salmon, assemble tacos with slaw, and squeeze lime on top.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Friday',
+    title: 'Shrimp Pad Thai',
+    cookTime: '35 min',
+    ingredients: ['Rice noodles', 'Shrimp', 'Eggs', 'Peanuts', 'Tamarind sauce'],
+    instructions: 'Sauté shrimp, scramble eggs, stir fry noodles and sauce together.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Saturday',
+    title: 'Chickpea Curry',
+    cookTime: '45 min',
+    ingredients: ['Chickpeas', 'Tomatoes', 'Coconut milk', 'Curry powder'],
+    instructions: 'Simmer all ingredients until thick. Serve with rice or naan.',
+    image: require('../assets/default.jpg'),
+  },
+  {
+    day: 'Sunday',
+    title: 'Stuffed Bell Peppers',
+    cookTime: '50 min',
+    ingredients: ['Bell peppers', 'Ground turkey', 'Rice', 'Cheese'],
+    instructions: 'Stuff peppers and bake until golden brown.',
+    image: require('../assets/default.jpg'),
+  },
+];
+
+export default function HomeScreen() {
+  const [mealPlan, setMealPlan] = useState([]);
+  const [selectedMeal, setSelectedMeal] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const navigation = useNavigation();
 
-  useEffect(() => {
-    async function fetchFilteredRecipes() {
-      let query = supabase.from('recipes_enriched').select('*').limit(100);
-      const { data, error } = await query;
+const generateMealPlan = async () => {
+  try {
+    const response = await fetch('https://occqboivivsxdqgrfkgt.supabase.co/functions/v1/generate-meal-plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        preferences: {
+          allergies: ['Peanuts'],
+          cuisine: ['Mexican', 'Mediterranean'],
+          people: 2,
+          mealsPerDay: 1,
+        },
+      }),
+    });
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-      } else {
-        console.log('✅ Fetched recipes:', data);
-        setRecipes(data);
-      }
-    }
+    const data = await response.json();
+    setMealPlan(data.meals);
+    setAiModalVisible(false);
+  } catch (error) {
+    console.error('Error generating meal plan:', error);
+  }
+};
 
-    fetchFilteredRecipes();
-  }, []);
+const generateMealPlan = async () => {
+  try {
+    const meals = await generateMealPlanFromAI(aiPrompt); // now uses the input!
+    setMealPlan(meals);
+    setAiModalVisible(false);
+  } catch (error) {
+    console.error('AI Meal Plan Error:', error);
+  }
+};
 
-  const generatedMeals = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    .map((day, index) => {
-      const recipe = recipes[index];
-      return recipe ? {
-        day,
-        title: recipe.title,
-        image: localImages[index % localImages.length],
-      } : null;
-    })
-    .filter(Boolean);
+  const openMealModal = (meal) => {
+    setSelectedMeal(meal);
+    setModalVisible(true);
+  };
+
+  const closeMealModal = () => {
+    setModalVisible(false);
+    setSelectedMeal(null);
+  };
 
   const renderMealCard = ({ item }) => (
-    <TouchableOpacity onPress={() => navigation.navigate('Day', { day: item.day, mealTitle: item.title })}>
-      <View style={styles.card}>
-        <Image source={item.image} style={styles.image} />
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardDay}>{item.day}</Text>
-      </View>
+    <TouchableOpacity style={styles.card} onPress={() => openMealModal(item)}>
+      <Image source={item.image} style={styles.image} />
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.cookTime}>{item.cookTime}</Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      {/* Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalText}>AI meal planning coming soon!</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalClose}>
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+      <TouchableOpacity style={styles.askAiBar} onPress={() => setAiModalVisible(true)}>
+        <Ionicons name="sparkles" size={20} color="black" />
+        <Text style={styles.askAiText}>Ask AI to Plan My Week</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.preferencesLink} onPress={() => navigation.navigate('PreferencesScreen')}>
+        <Ionicons name="settings-outline" size={16} color="#0077b6" />
+        <Text style={styles.preferencesText}>Edit Weekly Preferences</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.header}>This Week's Dinners</Text>
+      <FlatList
+        horizontal
+        data={mealPlan.length > 0 ? mealPlan : dummyMeals}
+        keyExtractor={(item) => item.title}
+        renderItem={renderMealCard}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.cardList}
+      />
+
+      {/* Meal Detail Modal */}
+      <Modal visible={modalVisible} animationType="slide">
+        <View style={styles.modalContainer}>
+          <TouchableOpacity onPress={closeMealModal} style={styles.closeButton}>
+            <Ionicons name="close" size={30} color="black" />
+          </TouchableOpacity>
+          {selectedMeal && (
+            <>
+              <Image source={selectedMeal.image} style={styles.modalImage} />
+              <Text style={styles.modalTitle}>{selectedMeal.title}</Text>
+              <Text style={styles.modalText}>Time to cook: {selectedMeal.cookTime}</Text>
+              <Text style={styles.modalText}>Ingredients and instructions will go here...</Text>
+            </>
+          )}
         </View>
       </Modal>
 
-      {/* Top Icons */}
-      <View style={styles.topBar}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Preferences')}>
-          <Ionicons name="settings-outline" size={24} color="black" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="star" size={24} color="black" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="time" size={24} color="black" />
-        </TouchableOpacity>
-      </View>
+      {/* Ask AI Modal */}
+      <Modal visible={aiModalVisible} animationType="slide" transparent>
+        <View style={styles.aiModalOverlay}>
+          <View style={styles.aiModalContainer}>
+            <Text style={styles.modalTitle}>Ask AI to Plan Your Week</Text>
+            <TextInput
+  placeholder="e.g., High protein, Mexican, 2 people..."
+  style={styles.aiInput}
+  value={aiPrompt}
+  onChangeText={setAiPrompt}
+/>
+<TouchableOpacity
+  style={styles.aiButton}
+  onPress={generateMealPlan}
+>
+  <Text style={styles.aiButtonText}>Generate</Text>
+</TouchableOpacity>
 
-      {/* Ask AI */}
-      <View style={styles.askAIContainer}>
-        <TouchableOpacity style={styles.askAIButton} onPress={() => setModalVisible(true)}>
-          <Ionicons name="sparkles" size={20} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.askAIText}>Ask AI to Plan My Week</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Meal Planner */}
-      <Text style={styles.sectionTitle}>Meal Planner</Text>
-      <FlatList
-        data={generatedMeals}
-        renderItem={renderMealCard}
-        keyExtractor={(item) => item.day}
-        horizontal
-        contentContainerStyle={styles.list}
-        showsHorizontalScrollIndicator={false}
-      />
-
-      {/* Supabase Recipes */}
-      <Text style={styles.sectionTitle}>Recipes from Supabase</Text>
-      {recipes.length > 0 ? (
-        <FlatList
-          data={recipes}
-          keyExtractor={(item) => item.id?.toString() || item['Unnamed: 0']?.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <Text style={styles.name}>{item.title}</Text>
-            </View>
-          )}
-        />
-      ) : (
-        <Text style={[styles.connectionStatus, { color: 'red' }]}>⚠️ No recipes found yet</Text>
-      )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-  topBar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, marginBottom: 8, gap: 16 },
-  iconButton: { paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 8 },
-  list: { paddingHorizontal: 16 },
-  card: { backgroundColor: '#f2f2f2', borderRadius: 8, overflow: 'hidden', width: 160, height: 180, marginRight: 12 },
-  image: { width: '100%', height: 100 },
-  cardTitle: { paddingHorizontal: 8, paddingTop: 6, fontWeight: '600', fontSize: 14 },
-  cardDay: { paddingHorizontal: 8, paddingBottom: 10, fontSize: 12, color: '#777' },
-  askAIContainer: { paddingHorizontal: 16, marginBottom: 16 },
-  askAIButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#000', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 },
-  askAIText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.4)' },
-  modalContent: { width: '80%', backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center' },
-  modalText: { fontSize: 16, marginBottom: 12, textAlign: 'center' },
-  modalClose: { backgroundColor: '#000', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  modalCloseText: { color: '#fff', fontWeight: 'bold' },
-  item: { marginBottom: 12, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 8, marginHorizontal: 16 },
-  name: { fontSize: 16 },
-  connectionStatus: { fontSize: 16, marginBottom: 10, paddingHorizontal: 16 },
+  container: {
+    flex: 1,
+    paddingTop: 50,
+    backgroundColor: '#fff',
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginLeft: 20,
+    marginBottom: 10,
+  },
+  askAiBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    marginHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  askAiText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  preferencesLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 20,
+    marginBottom: 10,
+  },
+  preferencesText: {
+    fontSize: 14,
+    color: '#0077b6',
+    marginLeft: 6,
+  },
+  cardList: {
+    paddingLeft: 10,
+  },
+  card: {
+    backgroundColor: '#f2f2f2',
+    borderRadius: 10,
+    marginRight: 10,
+    padding: 10,
+    alignItems: 'center',
+    width: 160,
+    height: 200,
+    justifyContent: 'center',
+  },
+  image: {
+    width: 140,
+    height: 100,
+    borderRadius: 10,
+  },
+  title: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cookTime: {
+    fontSize: 14,
+    color: '#555',
+  },
+  modalContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+  },
+  modalImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginVertical: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  aiModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiModalContainer: {
+    width: '85%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+  },
+  aiInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 10,
+  },
+  aiButton: {
+    backgroundColor: '#0077b6',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  aiButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
 });
